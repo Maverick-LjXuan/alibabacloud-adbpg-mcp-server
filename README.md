@@ -11,7 +11,7 @@ AnalyticDB PostgreSQL MCP Server serves as a universal interface between AI Agen
 Download from Github
 
 ```shell
-git clone git@gitlab.alibaba-inc.com:adbpg/adbpg-mcp-server.git
+git clone git@github.com:aliyun/alibabacloud-adbpg-mcp-server.git
 ```
 
 #### MCP Integration
