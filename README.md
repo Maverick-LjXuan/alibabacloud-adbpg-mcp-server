@@ -6,12 +6,12 @@ AnalyticDB PostgreSQL MCP Server serves as a universal interface between AI Agen
 
 
 
-#### Download
+### Mode 1: Download
 
 Download from Github
 
 ```shell
-git clone git@github.com:aliyun/alibabacloud-adbpg-mcp-server.git
+git clone https://github.com/aliyun/alibabacloud-adbpg-mcp-server.git
 ```
 
 #### MCP Integration
@@ -27,6 +27,30 @@ Add the following configuration to the MCP client configuration file:
       "/path/to/adbpg-mcp-server",
       "run",
       "adbpg-mcp-server"
+    ],
+    "env": {
+      "ADBPG_HOST": "host",
+      "ADBPG_PORT": "port",
+      "ADBPG_USER": "username",
+      "ADBPG_PASSWORD": "password",
+      "ADBPG_DATABASE": "database"
+    }
+  }
+}
+```
+
+### Mode 2: Using pip
+
+```
+pip install adbpg_mcp_server
+```
+#### MCP Integration
+```json
+"mcpServers": {
+  "adbpg-mcp-server": {
+    "command": "uvx",
+    "args": [
+      "adbpg_mcp_server"
     ],
     "env": {
       "ADBPG_HOST": "host",
