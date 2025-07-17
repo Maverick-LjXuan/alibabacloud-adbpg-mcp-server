@@ -132,6 +132,7 @@ pip install adbpg_mcp_server
         - `metadata` (`json`): The metadata json(optional).
         - `memory_type` (`text`): The memory type(optional).
         - `prompt` (`text`): The prompt(optional).
+        
         **Note:**  
         At least one of `user_id`, `run_id`, or `agent_id` should be provided.
 
@@ -141,6 +142,7 @@ pip install adbpg_mcp_server
         - `user_id` (`text`): User ID.
         - `run_id` (`text`): Run ID.
         - `agent_id` (`text`): Agent ID.
+        
         **Note:**  
         At least one of `user_id`, `run_id`, or `agent_id` should be provided.
 
@@ -152,6 +154,7 @@ pip install adbpg_mcp_server
         - `run_id` (`text`): Run ID.
         - `agent_id` (`text`): Agent ID.
         - `filter` (`json`): Additional filter conditions in JSON format (optional).
+        
         **Note:**  
         At least one of `user_id`, `run_id`, or `agent_id` should be provided.
 
@@ -161,6 +164,7 @@ pip install adbpg_mcp_server
         - `user_id` (`text`): User ID.
         - `run_id` (`text`): Run ID.
         - `agent_id` (`text`): Agent ID.
+       
         **Note:**  
         At least one of `user_id`, `run_id`, or `agent_id` should be provided.
 
