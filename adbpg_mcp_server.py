@@ -84,7 +84,8 @@ def get_graphrag_config():
         "embedding_url": os.getenv("GRAPHRAG_EMBEDDING_BASE_URL"),
         "language": os.getenv("GRAPHRAG_LANGUAGE", "English"),
         "entity_types": os.getenv("GRAPHRAG_ENTITY_TYPES"),
-        "relationship_types": os.getenv("GRAPHRAG_RELATIONSHIP_TYPES")
+        "relationship_types": os.getenv("GRAPHRAG_RELATIONSHIP_TYPES"),
+        "postgres_password": os.getenv("ADBPG_PASSWORD")
     }
     return graphrag_config
     
@@ -144,6 +145,7 @@ def get_db_config():
 GRAPHRAG_CONN: Connection | None = None
 def get_graphrag_tool_connection() -> Connection:
     global GRAPHRAG_CONN
+    global GRAPHRAG_ENV_IS_READY
     config = get_db_config()
     # 如果未连接，或者连接失效 重新连接
     if GRAPHRAG_CONN is None or GRAPHRAG_CONN.closed:
@@ -156,6 +158,7 @@ def get_graphrag_tool_connection() -> Connection:
                 logger.info(f"[GraphRAG] Use the connection {id(graphrag_conn)} when executing the graphrag init")
             logger.info("Successfully initialize the graphrag server\n")
         except Exception as e:
+            GRAPHRAG_ENV_IS_READY = False
             logger.error(f"Failed to initialize the graphrag server: {e}")
         # 重新执行初始化
     else:
@@ -177,12 +180,14 @@ def get_graphrag_tool_connection() -> Connection:
                     logger.info(f"[GraphRAG] Use the connection {id(graphrag_conn)} when executing the graphrag init")
                 logger.info("Successfully initialize the graphrag server\n")
             except Exception as e:
+                GRAPHRAG_ENV_IS_READY = False
                 logger.error(f"Failed to initialize the graphrag server: {e}")
     
     return GRAPHRAG_CONN
 
 LLM_MEMORY_CONN: Connection | None = None
 def get_llm_memory_tool_connection() -> Connection:
+    global LLMEMORY_ENV_IS_READY
     global LLM_MEMORY_CONN
     config = get_db_config()
     # 如果未连接，或者连接失效 重新连接
@@ -196,6 +201,7 @@ def get_llm_memory_tool_connection() -> Connection:
                 logger.info(f"[LLM Memory] Use the connection {id(llm_memory_conn)} when executing the llm_memory init")
             logger.info("Successfully initialize the llm server\n")
         except Exception as e:
+            LLMEMORY_ENV_IS_READY = False
             logger.error(f"Failed to initialize the llm_memory server: {e}")
     else:
         # 发送一个轻量级查询 检测 连接是否健康
@@ -215,6 +221,7 @@ def get_llm_memory_tool_connection() -> Connection:
                     logger.info(f"[LLM Memory] Use the connection {id(llm_memory_conn)} when executing the llm_memory init")
                 logger.info("Successfully initialize the llm server\n")
             except Exception as e:
+                LLMEMORY_ENV_IS_READY = False
                 logger.error(f"Failed to initialize the llm_memory server: {e}")
 
     return LLM_MEMORY_CONN
@@ -501,7 +508,7 @@ async def list_tools() -> list[Tool]:
         #### graphrag & llm_memory tool list
         Tool(
             name = "adbpg_graphrag_upload",
-            description = "Upload a text file (with its name) and file content to graphrag to generate a knowledge graph.",
+            description = "Execute graphrag upload operation",
             # 参数：filename text， context text
             # filename 表示文件名称， context 表示文件内容
             inputSchema = {
@@ -509,11 +516,11 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "filename": {
                         "type": "string",
-                        "description": "The name of the file to be uploaded"
+                        "description": "The file name need to upload"
                     },
                     "context": {
                         "type": "string",
-                        "description": "The textual content of the file."
+                        "description": "the context of your file"
                     }
                 },
                 "required": ["filename", "context"]
@@ -521,7 +528,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name = "adbpg_graphrag_query",
-            description = "Query the graphrag using the specified query string and mode.",
+            description = "Execute graphrag query operation",
             # 参数：query_str text, [query_mode text]
             # query_str 是询问的问题，query_mode 选择查询模式
             inputSchema = {
@@ -529,11 +536,15 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "query_str": {
                         "type": "string",
-                        "description": "The query content."
+                        "description": "The query you want to ask"
                     },
                     "query_mode": {
                         "type": "string",
-                        "description": "The query mode, choose from [bypass, naive, local, global, hybrid, mix]. If null, defaults to mix."
+                        "description": "The query mode you need to choose [ bypass,naive, local, global, hybrid, mix[default], tree ]."
+                    },
+                    "start_search_node_id": {
+                        "type": "string",
+                        "description": "If using 'tree' query mode, set the start node ID of tree."
                     }
                 },
                 "required": ["query_str"]
@@ -587,24 +598,40 @@ async def list_tools() -> list[Tool]:
                     "root_node_entity": {
                         "type": "string",
                         "description": "the root_noot_entity"
+                        
                     }
                 },
                 "required": ["root_node_entity"]
             }
         ),
-
-
+        Tool(
+            name = "adbpg_graphrag_reset_tree_query",
+            description = " Reset the decision tree in the tree query mode",
+            # para: 
+            inputSchema = {
+                "type": "object",
+                "required": []
+            }
+        ),
         Tool(
             name = "adbpg_llm_memory_add",
-            description = "Add LLM long memory with a specific user, run or agent.",
+            description = "Execute llm_memory add operation",
             # 参数：messages json, user_id text, run_id text, agent_id text, metadata json
             # 增加新的记忆
             inputSchema={
                 "type": "object",
                 "properties": {
                     "messages": {
-                        "type": "json",
-                        "description": "llm_memory messages"
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "role": {"type": "string"},
+                                "content": {"type": "string"}
+                            },
+                            "required": ["role", "content"]
+                        },
+                        "description": "List of messages objects (e.g., conversation history)"
                     },
                     "user_id": {
                         "type": "string",
@@ -619,7 +646,7 @@ async def list_tools() -> list[Tool]:
                         "description": "the agent_id"
                     },
                     "metadata": {
-                        "type": "json",
+                        "type": "object",
                         "description": "the metatdata json"
                     },
                     "memory_type": {
@@ -636,7 +663,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name = "adbpg_llm_memory_get_all",
-            description = "Retrieves all memory records associated with a specific user, run or agent.",
+            description = "Execute llm_memory get_all operation",
             # 参数：user_id text, run_id text, agent_id text
             # 获取某个用户或者某个agent的所有记忆
             inputSchema={
@@ -660,7 +687,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name = "adbpg_llm_memory_search",
-            description = "Retrieves memories relevant to the given query for a specific user, run, or agent.",
+            description = "Execute llm_memory search operation",
             # 参数：query text, user_id text, run_id text, agent_id text, filter json
             # 获取与给定 query 相关的记忆
             inputSchema={
@@ -683,7 +710,7 @@ async def list_tools() -> list[Tool]:
                         "description": "The search of agent_id"
                     },
                     "filter": {
-                        "type": "json",
+                        "type": "object",
                         "description": "The search of filter"
                     }
                 },
@@ -693,7 +720,7 @@ async def list_tools() -> list[Tool]:
         ,
         Tool(
             name = "adbpg_llm_memory_delete_all",
-            description = "Delete all memory records associated with a specific user, run or agent.",
+            description = "Execute llm_memory delete_all operation",
             # 参数：user_id text, run_id text, agent_id text
             # 删除某个用户或者agent的所有记忆
             inputSchema={
@@ -735,6 +762,7 @@ def get_llm_memory_tool_result(wrapped_sql, params) -> list[TextContent]:
     try:
         conn = get_llm_memory_tool_connection()
         with conn.cursor() as cursor:
+
             cursor.execute(wrapped_sql, params)
             
             if cursor.description:
@@ -782,6 +810,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             raise ValueError("Query is required")
         if not query.strip().upper().startswith("SELECT"):
             raise ValueError("Query must be a SELECT statement")
+        query = query.rstrip().rstrip(';')
+        query = f"""
+            SELECT json_agg(row_to_json(t))
+            FROM ({query}) AS t
+        """
     elif name == "execute_dml_sql":
         query = arguments.get("query")
         if not query:
@@ -792,7 +825,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         query = arguments.get("query")
         if not query:
             raise ValueError("Query is required")
-        if not any(query.strip().upper().startswith(keyword) for keyword in ["CREATE", "ALTER", "DROP"]):
+        if not any(query.strip().upper().startswith(keyword) for keyword in ["CREATE", "ALTER", "DROP", "TRUNCATE"]):
             raise ValueError("Query must be a DDL statement (CREATE, ALTER, DROP)")
     elif name == "analyze_table":
         schema = arguments.get("schema")
@@ -830,18 +863,32 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             raise ValueError("GraphRAG Server initialization failed. This tool cannot be used.") 
         query_str = arguments.get("query_str")
         query_mode = arguments.get("query_mode")
+        start_search_node_id = arguments.get("start_search_node_id")
+
         if not query_str:
             raise ValueError("Query is required")
         if not query_mode:
             # default mode
             query_mode = "mix"
+        if not start_search_node_id:
+            start_search_node_id = None
+
         # 命令拼接
         wrapped_sql = f"""
-                SELECT adbpg_graphrag.query(%s::text, %s::text)
+                SELECT adbpg_graphrag.query(%s::text, %s::text, %s::text)
             """
-        params = [query_str, query_mode]
+        params = [query_str, query_mode, start_search_node_id]
         return get_graphrag_tool_result(wrapped_sql, params)
-
+    
+    elif name == "adbpg_graphrag_reset_tree_query":
+        if GRAPHRAG_ENV_IS_READY == False:
+            raise ValueError("GraphRAG Server initialization failed. This tool cannot be used.")
+        wrapped_sql = f"""
+            SELECT adbpg_graphrag.reset_tree_query()
+        """
+        params = []
+        return get_graphrag_tool_result(wrapped_sql, params)
+    
     elif name == "adbpg_graphrag_upload_decision_tree":
         if GRAPHRAG_ENV_IS_READY == False:
             raise ValueError("GraphRAG Server initialization failed. This tool cannot be used.")
@@ -1034,15 +1081,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             conn.autocommit = True
             with conn.cursor() as cursor:
                 
-                #cursor.execute("SET statement_timeout = 300000")
-                #过滤子查询的分号
-                query = query.rstrip().rstrip(';')
-                wrapped_query = f"""
-                SELECT json_agg(row_to_json(t))
-                FROM ({query}) AS t
-                """
-                cursor.execute(wrapped_query)
-
+                cursor.execute(query)
+                
                 if name == "analyze_table":
                     return [TextContent(type="text", text=f"Successfully analyzed table {schema}.{table}")]
 
@@ -1051,7 +1091,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     json_result = cursor.fetchone()[0]
                     json_str = json.dumps(json_result, ensure_ascii = False, indent = 2)
                     result = [TextContent(type="text", text=json_str)]
-
                     try:
                         json.loads(result[0].text)
                     except json.JSONDecodeError as e:
