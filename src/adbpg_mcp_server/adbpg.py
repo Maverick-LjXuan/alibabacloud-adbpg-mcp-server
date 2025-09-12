@@ -68,7 +68,7 @@ class DatabaseManager:
                 config_json = json.dumps(settings.get_graphrag_init_config())
                 with conn.cursor() as cursor:
                     cursor.execute("SELECT adbpg_graphrag.initialize(%s::json);", (config_json,))
-            except (psycopg.Error, json.JSONDecodeError, AttributeError) as e:
+            except Exception as e:
                 logger.error(f"ADBPG GraphRAG initialization failed: {e}")
                 raise RuntimeError(f"ADBPG GraphRAG initialization failed: {e}") from e
         return self._get_connection('_graphrag_conn', initializer=initializer)
@@ -83,7 +83,7 @@ class DatabaseManager:
                 config_json = json.dumps(settings.get_memory_init_config(self.db_master_port))
                 with conn.cursor() as cursor:
                     cursor.execute("SELECT adbpg_llm_memory.config(%s::json);", (config_json,))
-            except (psycopg.Error, json.JSONDecodeError, AttributeError) as e:
+            except Exception as e:
                 logger.error(f"ADBPG LLM Memory initialization failed: {e}")
                 raise RuntimeError(f"ADBPG LLM Memory initialization failed: {e}") from e
 

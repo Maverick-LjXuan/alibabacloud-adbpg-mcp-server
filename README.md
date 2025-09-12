@@ -29,7 +29,7 @@ uv pip install -e .
 This is the simplest way to install the server for direct use within your projects.
 
 ```shell
-pip install adbpg_mcp_server
+pip install adbpg-mcp-server
 ```
 
 ## Running the Server
