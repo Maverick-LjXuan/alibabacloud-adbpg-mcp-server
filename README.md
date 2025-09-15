@@ -249,18 +249,6 @@ MCP Server requires the following environment variables to initialize graphRAG a
 - `LLM_MODEL`: LLM model name or identifier
 - `EMBEDDING_MODEL`: Embedding model name or identifier
 
-### Resources
-
-#### Built-in Resources
-
-*   `adbpg:///schemas`: Get all schemas in the database
-
-#### Resource Templates
-
-*   `adbpg:///{schema}/tables`: List all tables in a specific schema
-*   `adbpg:///{schema}/{table}/ddl`: Get table DDL
-*   `adbpg:///{schema}/{table}/statistics`: Show table statistics
-
 
 ## Dependencies
 
